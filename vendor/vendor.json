@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "75i/PGsa91Bj4TLTqBMnGwamz7Q=",
+			"path": "github.com/fullsailor/pkcs7",
+			"revision": "3befe47e6c80b97ab6863a5fe1b6a611003a5ab0",
+			"revisionTime": "2016-07-25T00:16:40Z"
+		}
+	],
+	"rootPath": "github.com/erning/mobileconfig"
+}
