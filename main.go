@@ -49,10 +49,10 @@ func handleSign(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	signedData.AddSigner(Certificate, PrivateKey, SignInfoConfig)
 	for _, cert := range CertificateBundle {
 		signedData.AddCertificate(cert)
 	}
-	signedData.AddSigner(Certificate, PrivateKey, SignInfoConfig)
 	data, err := signedData.Finish()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not AppleRootCA: %s", err.Error()), 500)
@@ -85,7 +85,7 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = verifyWithRootCA(p7.Certificates)
+	err = verifyCertificateChain(p7.Certificates)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -103,37 +103,24 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 	succ = succ%MAX_COUNT + 1
 }
 
-func verifyWithRootCA(certs []*x509.Certificate) error {
+func verifyCertificateChain(certs []*x509.Certificate) error {
 	lenOfCerts := len(certs)
 	if lenOfCerts <= 0 {
 		return fmt.Errorf("No certificate?")
 	}
-	err := certs[lenOfCerts-1].CheckSignatureFrom(RootCA)
-	if err == nil {
-		return nil
-	}
-
-	var cert *x509.Certificate = nil
-	for _, i := range certs {
-		found := true
-		for _, j := range certs {
-			if i == j {
-				continue
-			}
-			err := i.CheckSignatureFrom(j)
-			if err == nil {
-				found = false
-				break
-			}
-		}
-		if found {
-			cert = i
+	cert := certs[0]
+	for _, parentCert := range certs[1:] {
+		err := cert.CheckSignatureFrom(parentCert)
+		if err != nil {
 			break
 		}
+		cert = parentCert
 	}
+
 	if cert == nil {
-		return fmt.Errorf("Self signed?")
+		return fmt.Errorf("Nil certificate?")
 	}
+
 	fingerprint := sha1.Sum(cert.Raw)
 	if bytes.Compare(RootFingerprint[:], fingerprint[:]) != 0 {
 		err := cert.CheckSignatureFrom(RootCA)
