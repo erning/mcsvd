@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/fullsailor/pkcs7"
 )
@@ -70,6 +71,18 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", 400)
 		return
 	}
+
+	verbose := false
+	verify := true
+	qs := r.URL.Query()
+	if _, ok := qs["verbose"]; ok {
+		verbose = true
+	}
+	if value, ok := qs["verify"]; ok {
+		v := strings.ToLower(value[0])
+		verify = (v == "1" || v == "true" || v == "yes")
+	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -88,22 +101,17 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	err = p7.Verify()
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	err = verifyCertificateChain(p7.Certificates)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	verbose := false
-	qs := r.URL.Query()
-	if _, ok := qs["verbose"]; ok {
-		verbose = true
+	if verify {
+		err = p7.Verify()
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		err = verifyCertificateChain(p7.Certificates)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
 	}
 
 	if verbose {
