@@ -25,18 +25,7 @@ var SignInfoConfig pkcs7.SignerInfoConfig
 var RootCA *x509.Certificate
 var RootFingerprint [20]byte
 
-var requests, succ int64 = 0, 0
-
-const MAX_COUNT = 10000000000
-
-func handleStatus(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf("%v\t%v", requests, succ)))
-	w.Write([]byte("\r\n"))
-}
-
 func handleSign(w http.ResponseWriter, r *http.Request) {
-	requests = requests%MAX_COUNT + 1
-
 	if r.Method != "POST" || r.Body == nil {
 		http.Error(w, "Bad request", 400)
 		return
@@ -61,12 +50,9 @@ func handleSign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(data)
-	succ = succ%MAX_COUNT + 1
 }
 
 func handleVerify(w http.ResponseWriter, r *http.Request) {
-	requests = requests%MAX_COUNT + 1
-
 	if r.Method != "POST" || r.Body == nil {
 		http.Error(w, "Bad request", 400)
 		return
@@ -117,7 +103,6 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 	if verbose {
 		w.Write(p7.Content)
 	}
-	succ = succ%MAX_COUNT + 1
 }
 
 func workaround_pkcs7(body []byte) ([]byte, error) {
@@ -252,7 +237,6 @@ func main() {
 	prepareCertificateBundle(os.Args[4])
 	prepareRootCA(os.Args[5])
 
-	http.HandleFunc("/status", handleStatus)
 	http.HandleFunc("/sign", handleSign)
 	http.HandleFunc("/verify", handleVerify)
 
