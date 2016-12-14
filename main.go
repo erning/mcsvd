@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 
 	"github.com/fullsailor/pkcs7"
@@ -76,8 +77,16 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 	p7, err := pkcs7.Parse(body)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
+		body, err = workaround_pkcs7(body)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		p7, err = pkcs7.Parse(body)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
 	}
 	err = p7.Verify()
 	if err != nil {
@@ -101,6 +110,19 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 		w.Write(p7.Content)
 	}
 	succ = succ%MAX_COUNT + 1
+}
+
+func workaround_pkcs7(body []byte) ([]byte, error) {
+	cmd := exec.Command("openssl", "pkcs7", "-inform", "der", "-outform", "der")
+	cmd.Stdin = bytes.NewReader(body)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+
 }
 
 func verifyCertificateChain(certs []*x509.Certificate) error {
