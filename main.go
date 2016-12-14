@@ -78,7 +78,7 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		body, err = workaround_pkcs7(body)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, err.Error(), 400)
 			return
 		}
 		p7, err = pkcs7.Parse(body)
